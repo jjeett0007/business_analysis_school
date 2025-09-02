@@ -29,11 +29,142 @@ const Admin = () => {
     loadEscalations();
   }, []);
 
+  const generateSampleEscalations = (): Escalation[] => {
+    const sampleData: Escalation[] = [
+      {
+        id: 'sample-1',
+        name: 'Sarah Johnson',
+        email: 'sarah.johnson@email.com',
+        message: 'Need more information about international student eligibility and visa requirements',
+        sessionId: 'sess-abc123',
+        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+        status: 'Open',
+        chatHistory: [
+          {
+            id: '1',
+            type: 'assistant',
+            content: 'Hi there 👋, I\'m your virtual support assistant. What would you like to know today?',
+            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+          },
+          {
+            id: '2',
+            type: 'user',
+            content: 'I\'m an international student. Can I apply for your business analysis program?',
+            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 60000)
+          },
+          {
+            id: '3',
+            type: 'assistant',
+            content: 'I\'d be happy to help with that! However, I want to make sure you get the most accurate information for your specific situation.',
+            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 120000)
+          }
+        ]
+      },
+      {
+        id: 'sample-2',
+        name: 'Michael Chen',
+        email: 'michael.chen@company.com',
+        message: 'Corporate training options for my team of 15 analysts',
+        sessionId: 'sess-def456',
+        timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+        status: 'In Progress',
+        chatHistory: [
+          {
+            id: '1',
+            type: 'user',
+            content: 'Do you offer corporate training for teams?',
+            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+          },
+          {
+            id: '2',
+            type: 'assistant',
+            content: 'We do offer corporate programs! Let me get you connected with our enterprise team for custom pricing.',
+            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000 + 60000)
+          }
+        ]
+      },
+      {
+        id: 'sample-3',
+        name: 'Jennifer Rodriguez',
+        email: 'jen.rodriguez@gmail.com',
+        message: 'Schedule changed, need to defer my enrollment to next cohort',
+        sessionId: 'sess-ghi789',
+        timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+        status: 'Closed',
+        chatHistory: [
+          {
+            id: '1',
+            type: 'user',
+            content: 'I need to postpone my start date due to work commitments',
+            timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+          },
+          {
+            id: '2',
+            type: 'assistant',
+            content: 'I understand. Let me connect you with our admissions team to discuss deferral options.',
+            timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 60000)
+          }
+        ]
+      },
+      {
+        id: 'sample-4',
+        name: 'David Park',
+        email: 'david.park@tech.com',
+        message: 'Payment plan modification needed due to budget changes',
+        sessionId: 'sess-jkl012',
+        timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
+        status: 'Open',
+        chatHistory: [
+          {
+            id: '1',
+            type: 'user',
+            content: 'Can I change my payment plan after enrollment?',
+            timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000)
+          },
+          {
+            id: '2',
+            type: 'assistant',
+            content: 'Payment plan modifications are possible. I\'ll connect you with our billing team for assistance.',
+            timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000 + 60000)
+          }
+        ]
+      },
+      {
+        id: 'sample-5',
+        name: 'Lisa Thompson',
+        email: 'lisa.thompson@consulting.com',
+        message: 'Career services support - looking for job placement assistance',
+        sessionId: 'sess-mno345',
+        timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week ago
+        status: 'Closed',
+        chatHistory: [
+          {
+            id: '1',
+            type: 'user',
+            content: 'What kind of career support do you provide after graduation?',
+            timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          },
+          {
+            id: '2',
+            type: 'assistant',
+            content: 'We provide comprehensive career services including resume review, interview prep, and job placement assistance.',
+            timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 60000)
+          }
+        ]
+      }
+    ];
+    
+    return sampleData;
+  };
+
   const loadEscalations = () => {
     const stored = localStorage.getItem('escalations');
-    if (stored) {
-      setEscalations(JSON.parse(stored));
-    }
+    const storedEscalations = stored ? JSON.parse(stored) : [];
+    const sampleEscalations = generateSampleEscalations();
+    
+    // Combine stored and sample escalations
+    const allEscalations = [...storedEscalations, ...sampleEscalations];
+    setEscalations(allEscalations);
   };
 
   const updateEscalationStatus = (id: string, status: Escalation['status']) => {
