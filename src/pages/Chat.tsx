@@ -174,7 +174,7 @@ What would you like to know today?`,
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <div className="container mx-auto px-4 py-6">
-        <Card className="h-[80vh] flex flex-col shadow-soft">
+        <Card className="h-screen w-screen flex flex-col shadow-soft">
           <CardHeader className="border-b">
             <div className="flex items-center gap-4">
               <Button 
