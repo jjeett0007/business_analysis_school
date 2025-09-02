@@ -194,8 +194,8 @@ What would you like to know today?`,
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 flex flex-col p-0">
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 max-h-full">
               {messages.map((message) => (
                 <div
                   key={message.id}
