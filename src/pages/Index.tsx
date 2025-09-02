@@ -3,7 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { MessageCircle, Users, BookOpen } from "lucide-react";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import logo from "@/assets/logo.jpg";
+import student1 from "@/assets/student-1.jpg";
+import student2 from "@/assets/student-2.jpg";
+import student3 from "@/assets/student-3.jpg";
+import student4 from "@/assets/student-4.jpg";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -15,8 +22,17 @@ const Index = () => {
     "Application process"
   ];
 
+  const studentImages = [
+    { src: student1, alt: "Business analysis student studying" },
+    { src: student2, alt: "Students collaborating on project" },
+    { src: student3, alt: "Student presenting data visualization" },
+    { src: student4, alt: "Graduates celebrating success" }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-subtle flex flex-col">
+      <Header />
+      <main className="flex-1 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl shadow-soft">
         <CardHeader className="text-center space-y-6">
           <div className="flex justify-center">
@@ -40,6 +56,31 @@ const Index = () => {
         </CardHeader>
         
         <CardContent className="space-y-8">
+          {/* Student Images Slideshow */}
+          <div className="w-full max-w-md mx-auto">
+            <Carousel className="w-full">
+              <CarouselContent>
+                {studentImages.map((image, index) => (
+                  <CarouselItem key={index}>
+                    <div className="p-1">
+                      <Card>
+                        <CardContent className="flex aspect-[4/3] items-center justify-center p-2">
+                          <img 
+                            src={image.src} 
+                            alt={image.alt}
+                            className="w-full h-full object-cover rounded-md"
+                          />
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious />
+              <CarouselNext />
+            </Carousel>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div className="space-y-3">
               <MessageCircle className="h-8 w-8 mx-auto text-primary" />
@@ -91,6 +132,8 @@ const Index = () => {
           </div>
         </CardContent>
       </Card>
+      </main>
+      <Footer />
     </div>
   );
 };
