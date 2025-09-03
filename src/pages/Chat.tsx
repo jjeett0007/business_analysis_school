@@ -8,6 +8,7 @@ import { Send, ArrowLeft, Bot, User, Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { chatService } from "@/lib/api/service";
+import { useWebSocket } from "@/context/socketContext";
 
 interface Message {
   id: string;
@@ -16,6 +17,28 @@ interface Message {
   timestamp: Date;
   needsEscalation?: boolean;
 }
+
+const TypingIndicator = () => {
+  return (
+    <div className="flex gap-3 justify-start">
+      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 self-start">
+        <Bot className="h-4 w-4 text-white" />
+      </div>
+      <div className="max-w-[80%] rounded-lg px-4 py-3 bg-gray-100">
+        <div className="flex items-center space-x-1">
+          <div className="flex space-x-1">
+            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+          </div>
+          <span className="text-xs text-gray-500 ml-2">
+            Assistant is typing...
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const EscalationFormComponent = ({
   onSubmit,
@@ -117,45 +140,53 @@ const Chat = () => {
   const [sessionId] = useState(() => crypto.randomUUID());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
-  const { toast } = useToast();
-
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      const chatContainer = messagesEndRef.current.closest(".overflow-y-auto");
-      if (chatContainer) {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-      }
-    }
-  };
+  const { setSessionId, message } = useWebSocket();
+  const [isAssistantTyping, setIsAssistantTyping] = useState(false);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    setSessionId(sessionId);
+  }, [sessionId, setSessionId]);
 
-  const sendMessageMutation = useMutation({
-    mutationFn: chatService.sendChat,
-    onSuccess: (data) => {
-      toast({
-        title: "Success",
-        description: "Message sent successfully",
-      });
+  useEffect(() => {
+    if (message) {
+      const { reply, needsEscalation, isTyping } = message;
+      console.log({ reply, needsEscalation, isTyping });
+      if (
+        reply !== undefined ||
+        isTyping !== undefined ||
+        needsEscalation !== undefined
+      ) {
+        if (isTyping === true) {
+          setIsAssistantTyping(true);
+        }
 
-      setTimeout(() => {
-        const { reply, needsEscalation } = data.data;
+        if (isTyping === false) {
+          //hide typing state on the assistant side
+          setIsAssistantTyping(false);
+        }
 
-        const assistantMessage: Message = {
-          id: crypto.randomUUID(),
-          type: "assistant",
-          content: reply,
-          timestamp: new Date(),
-          needsEscalation,
-        };
+        if (reply !== undefined && reply !== "" && needsEscalation === false) {
+          setIsAssistantTyping(false);
+          const assistantMessage: Message = {
+            id: crypto.randomUUID(),
+            type: "assistant",
+            content: message.reply,
+            timestamp: new Date(),
+            needsEscalation: message.needsEscalation,
+          };
 
-        setMessages((prev) => [...prev, assistantMessage]);
+          setMessages((prev) => [...prev, assistantMessage]);
+        }
 
-        if (needsEscalation) {
+        if (
+          reply !== undefined &&
+          needsEscalation !== undefined &&
+          reply !== "" &&
+          needsEscalation === true
+        ) {
           setTimeout(() => {
+            setIsAssistantTyping(false);
+
             const escalationMessage: Message = {
               id: crypto.randomUUID(),
               type: "assistant",
@@ -177,8 +208,28 @@ const Chat = () => {
             ]);
           }, 1000);
         }
-      }, 1000);
-    },
+      }
+    }
+  }, [message]);
+
+  const { toast } = useToast();
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      const chatContainer = messagesEndRef.current.closest(".overflow-y-auto");
+      if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isAssistantTyping]);
+
+  const sendMessageMutation = useMutation({
+    mutationFn: chatService.sendChat,
+    onSuccess: (data) => {},
     onError: (error) => {
       console.error("Create branch error:", error);
       toast({
@@ -291,9 +342,9 @@ const Chat = () => {
               className="flex-1 overflow-y-auto p-6 space-y-4 max-h-full scroll-smooth"
               id="chat-container"
             >
-              {messages.length === 0 && (
+              {messages.length === 0 && !isAssistantTyping && (
                 <div className="w-full h-full flex flex-col items-center justify-center text-center px-4">
-                  <Brain scale={200} size={60} className="mb-4" />
+                  <Brain size={60} className="mb-4 text-blue-500" />
                   <h2 className="text-lg font-semibold mb-2">Welcome!</h2>
                   <p className="text-gray-600 mb-1">
                     I can help you with Business Analysis School programs,
@@ -303,6 +354,24 @@ const Chat = () => {
                     You can ask me anything related to business analysis school
                     programs, fees, or other program details.
                   </p>
+
+                  {/* Demo buttons */}
+                  <div className="mt-6 space-x-2">
+                    <button
+                      onClick={() =>
+                        handleSendMessage("Tell me about your programs")
+                      }
+                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    >
+                      Demo Message
+                    </button>
+                    <button
+                      // onClick={triggerEscalation}
+                      className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+                    >
+                      Demo Escalation
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -347,6 +416,8 @@ const Chat = () => {
                   )}
                 </div>
               ))}
+
+              {isAssistantTyping && <TypingIndicator />}
               <div ref={messagesEndRef} />
             </div>
 
