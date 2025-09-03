@@ -150,7 +150,7 @@ const Chat = () => {
   useEffect(() => {
     if (message) {
       const { reply, needsEscalation, isTyping } = message;
-      console.log({ reply, needsEscalation, isTyping });
+
       if (
         reply !== undefined ||
         isTyping !== undefined ||
@@ -231,7 +231,6 @@ const Chat = () => {
     mutationFn: chatService.sendChat,
     onSuccess: (data) => {},
     onError: (error) => {
-      console.error("Create branch error:", error);
       toast({
         title: "Error",
         description: "Failed to create branch",
