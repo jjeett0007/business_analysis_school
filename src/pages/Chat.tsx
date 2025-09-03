@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Send, ArrowLeft, Bot, User } from "lucide-react";
+import { Send, ArrowLeft, Bot, User, Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { chatService } from "@/lib/api/service";
@@ -118,8 +118,6 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // const location = useLocation();
-  // const navigate = useNavigate();
   const { toast } = useToast();
 
   const scrollToBottom = () => {
@@ -131,90 +129,9 @@ const Chat = () => {
     }
   };
 
-  //   useEffect(() => {
-  //     // Initial greeting message
-  //     const initialMessage: Message = {
-  //       id: crypto.randomUUID(),
-  //       type: "assistant",
-  //       content: `Hi there 👋, I'm your virtual support assistant.
-
-  // I can help you with:
-  // • Available programs
-  // • Payment options
-  // • Career outcomes after graduation
-
-  // What would you like to know today?`,
-  //       timestamp: new Date(),
-  //     };
-  //     setMessages([initialMessage]);
-
-  //     // Handle initial message from landing page
-  //     // if (location.state?.initialMessage) {
-  //     //   handleSendMessage(location.state.initialMessage);
-  //     // }
-  //   }, []);
-
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  const generateResponse = (
-    userMessage: string
-  ): { content: string; needsEscalation: boolean } => {
-    const lowerMessage = userMessage.toLowerCase();
-
-    // Simple keyword-based responses with some escalation triggers
-    if (lowerMessage.includes("program") || lowerMessage.includes("course")) {
-      return {
-        content:
-          "We offer comprehensive Business Analysis programs including:\n\n• Certified Business Analysis Professional (CBAP) prep\n• Agile Business Analysis certification\n• Data Analysis and Visualization\n• Requirements Management masterclass\n\nEach program includes hands-on projects, mentorship, and career support. Would you like details about any specific program?",
-        needsEscalation: false,
-      };
-    }
-
-    if (
-      lowerMessage.includes("payment") ||
-      lowerMessage.includes("price") ||
-      lowerMessage.includes("cost")
-    ) {
-      return {
-        content:
-          "Our payment options are flexible:\n\n• Full payment: $2,999 (save 10%)\n• 3-month plan: $1,150/month\n• 6-month plan: $599/month\n• Income Share Agreement available\n\nWe also offer scholarships and corporate discounts. Would you like me to connect you with our admissions team for personalized pricing?",
-        needsEscalation: Math.random() > 0.7, // 30% chance of escalation
-      };
-    }
-
-    if (
-      lowerMessage.includes("career") ||
-      lowerMessage.includes("job") ||
-      lowerMessage.includes("outcome")
-    ) {
-      return {
-        content:
-          "Our graduates achieve excellent career outcomes:\n\n• 92% job placement rate within 6 months\n• Average salary increase: $25,000\n• Top employers: Microsoft, Amazon, JPMorgan Chase\n• Career support for 12 months post-graduation\n\nWould you like to speak with our career services team about your specific goals?",
-        needsEscalation: Math.random() > 0.8, // 20% chance of escalation
-      };
-    }
-
-    if (
-      lowerMessage.includes("application") ||
-      lowerMessage.includes("apply") ||
-      lowerMessage.includes("enroll")
-    ) {
-      return {
-        content:
-          "The application process is straightforward:\n\n1. Complete online application (15 minutes)\n2. Schedule a brief interview with our admissions team\n3. Submit any relevant work experience or education credentials\n4. Receive admission decision within 48 hours\n\nReady to start your application?",
-        needsEscalation: false,
-      };
-    }
-
-    // Default response with higher escalation chance for complex queries
-    return {
-      content:
-        "I'd be happy to help with that! However, I want to make sure you get the most accurate and detailed information for your specific situation.",
-      needsEscalation: true,
-    };
-  };
 
   const sendMessageMutation = useMutation({
     mutationFn: chatService.sendChat,
@@ -223,9 +140,7 @@ const Chat = () => {
         title: "Success",
         description: "Message sent successfully",
       });
-      console.log(data);
 
-      // Generate AI response after a short delay
       setTimeout(() => {
         const { reply, needsEscalation } = data.data;
 
@@ -376,6 +291,21 @@ const Chat = () => {
               className="flex-1 overflow-y-auto p-6 space-y-4 max-h-full scroll-smooth"
               id="chat-container"
             >
+              {messages.length === 0 && (
+                <div className="w-full h-full flex flex-col items-center justify-center text-center px-4">
+                  <Brain scale={200} size={60} className="mb-4" />
+                  <h2 className="text-lg font-semibold mb-2">Welcome!</h2>
+                  <p className="text-gray-600 mb-1">
+                    I can help you with Business Analysis School programs,
+                    answer questions about payments, and more.
+                  </p>
+                  <p className="text-gray-500">
+                    You can ask me anything related to business analysis school
+                    programs, fees, or other program details.
+                  </p>
+                </div>
+              )}
+
               {messages.map((message) => (
                 <div
                   key={message.id}
