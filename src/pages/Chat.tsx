@@ -5,96 +5,274 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Send, ArrowLeft, Bot, User } from "lucide-react";
-import { EscalationForm } from "@/components/EscalationForm";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { chatService } from "@/lib/api/service";
 
 interface Message {
   id: string;
-  type: 'user' | 'assistant';
+  type: "user" | "assistant" | "escalation-form";
   content: string;
   timestamp: Date;
   needsEscalation?: boolean;
 }
 
+const EscalationFormComponent = ({
+  onSubmit,
+  onCancel,
+}: {
+  onSubmit: (data: { name: string; email: string; message: string }) => void;
+  onCancel: () => void;
+}) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    message: "",
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.name && formData.email) {
+      onSubmit(formData);
+    }
+  };
+
+  return (
+    <div className="bg-muted rounded-lg p-4 max-w-[80%]">
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-semibold text-sm mb-2">
+            Connect with a Support Agent
+          </h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            Please provide your details so our team can assist you better.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <Input
+              placeholder="Your name"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, name: e.target.value }))
+              }
+              required
+              className="text-sm"
+            />
+          </div>
+
+          <div>
+            <Input
+              type="email"
+              placeholder="Your email"
+              value={formData.email}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, email: e.target.value }))
+              }
+              required
+              className="text-sm"
+            />
+          </div>
+
+          <div>
+            <Input
+              placeholder="Additional details (optional)"
+              value={formData.message}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, message: e.target.value }))
+              }
+              className="text-sm"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              onClick={handleSubmit}
+              type="submit"
+              size="sm"
+              className="text-xs"
+            >
+              Submit Request
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onCancel}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [showEscalation, setShowEscalation] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const location = useLocation();
   const navigate = useNavigate();
+
+  // const location = useLocation();
+  // const navigate = useNavigate();
   const { toast } = useToast();
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesEndRef.current) {
+      const chatContainer = messagesEndRef.current.closest(".overflow-y-auto");
+      if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+    }
   };
 
-  useEffect(() => {
-    // Initial greeting message
-    const initialMessage: Message = {
-      id: crypto.randomUUID(),
-      type: 'assistant',
-      content: `Hi there 👋, I'm your virtual support assistant.
+  //   useEffect(() => {
+  //     // Initial greeting message
+  //     const initialMessage: Message = {
+  //       id: crypto.randomUUID(),
+  //       type: "assistant",
+  //       content: `Hi there 👋, I'm your virtual support assistant.
 
-I can help you with:
-• Available programs
-• Payment options  
-• Career outcomes after graduation
+  // I can help you with:
+  // • Available programs
+  // • Payment options
+  // • Career outcomes after graduation
 
-What would you like to know today?`,
-      timestamp: new Date()
-    };
-    setMessages([initialMessage]);
+  // What would you like to know today?`,
+  //       timestamp: new Date(),
+  //     };
+  //     setMessages([initialMessage]);
 
-    // Handle initial message from landing page
-    if (location.state?.initialMessage) {
-      handleSendMessage(location.state.initialMessage);
-    }
-  }, []);
+  //     // Handle initial message from landing page
+  //     // if (location.state?.initialMessage) {
+  //     //   handleSendMessage(location.state.initialMessage);
+  //     // }
+  //   }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const generateResponse = (userMessage: string): { content: string; needsEscalation: boolean } => {
+  const generateResponse = (
+    userMessage: string
+  ): { content: string; needsEscalation: boolean } => {
     const lowerMessage = userMessage.toLowerCase();
-    
+
     // Simple keyword-based responses with some escalation triggers
-    if (lowerMessage.includes('program') || lowerMessage.includes('course')) {
+    if (lowerMessage.includes("program") || lowerMessage.includes("course")) {
       return {
-        content: "We offer comprehensive Business Analysis programs including:\n\n• Certified Business Analysis Professional (CBAP) prep\n• Agile Business Analysis certification\n• Data Analysis and Visualization\n• Requirements Management masterclass\n\nEach program includes hands-on projects, mentorship, and career support. Would you like details about any specific program?",
-        needsEscalation: false
+        content:
+          "We offer comprehensive Business Analysis programs including:\n\n• Certified Business Analysis Professional (CBAP) prep\n• Agile Business Analysis certification\n• Data Analysis and Visualization\n• Requirements Management masterclass\n\nEach program includes hands-on projects, mentorship, and career support. Would you like details about any specific program?",
+        needsEscalation: false,
       };
     }
-    
-    if (lowerMessage.includes('payment') || lowerMessage.includes('price') || lowerMessage.includes('cost')) {
+
+    if (
+      lowerMessage.includes("payment") ||
+      lowerMessage.includes("price") ||
+      lowerMessage.includes("cost")
+    ) {
       return {
-        content: "Our payment options are flexible:\n\n• Full payment: $2,999 (save 10%)\n• 3-month plan: $1,150/month\n• 6-month plan: $599/month\n• Income Share Agreement available\n\nWe also offer scholarships and corporate discounts. Would you like me to connect you with our admissions team for personalized pricing?",
-        needsEscalation: Math.random() > 0.7 // 30% chance of escalation
+        content:
+          "Our payment options are flexible:\n\n• Full payment: $2,999 (save 10%)\n• 3-month plan: $1,150/month\n• 6-month plan: $599/month\n• Income Share Agreement available\n\nWe also offer scholarships and corporate discounts. Would you like me to connect you with our admissions team for personalized pricing?",
+        needsEscalation: Math.random() > 0.7, // 30% chance of escalation
       };
     }
-    
-    if (lowerMessage.includes('career') || lowerMessage.includes('job') || lowerMessage.includes('outcome')) {
+
+    if (
+      lowerMessage.includes("career") ||
+      lowerMessage.includes("job") ||
+      lowerMessage.includes("outcome")
+    ) {
       return {
-        content: "Our graduates achieve excellent career outcomes:\n\n• 92% job placement rate within 6 months\n• Average salary increase: $25,000\n• Top employers: Microsoft, Amazon, JPMorgan Chase\n• Career support for 12 months post-graduation\n\nWould you like to speak with our career services team about your specific goals?",
-        needsEscalation: Math.random() > 0.8 // 20% chance of escalation
+        content:
+          "Our graduates achieve excellent career outcomes:\n\n• 92% job placement rate within 6 months\n• Average salary increase: $25,000\n• Top employers: Microsoft, Amazon, JPMorgan Chase\n• Career support for 12 months post-graduation\n\nWould you like to speak with our career services team about your specific goals?",
+        needsEscalation: Math.random() > 0.8, // 20% chance of escalation
       };
     }
-    
-    if (lowerMessage.includes('application') || lowerMessage.includes('apply') || lowerMessage.includes('enroll')) {
+
+    if (
+      lowerMessage.includes("application") ||
+      lowerMessage.includes("apply") ||
+      lowerMessage.includes("enroll")
+    ) {
       return {
-        content: "The application process is straightforward:\n\n1. Complete online application (15 minutes)\n2. Schedule a brief interview with our admissions team\n3. Submit any relevant work experience or education credentials\n4. Receive admission decision within 48 hours\n\nReady to start your application?",
-        needsEscalation: false
+        content:
+          "The application process is straightforward:\n\n1. Complete online application (15 minutes)\n2. Schedule a brief interview with our admissions team\n3. Submit any relevant work experience or education credentials\n4. Receive admission decision within 48 hours\n\nReady to start your application?",
+        needsEscalation: false,
       };
     }
-    
+
     // Default response with higher escalation chance for complex queries
     return {
-      content: "I'd be happy to help with that! However, I want to make sure you get the most accurate and detailed information for your specific situation.",
-      needsEscalation: true
+      content:
+        "I'd be happy to help with that! However, I want to make sure you get the most accurate and detailed information for your specific situation.",
+      needsEscalation: true,
     };
   };
+
+  const sendMessageMutation = useMutation({
+    mutationFn: chatService.sendChat,
+    onSuccess: (data) => {
+      toast({
+        title: "Success",
+        description: "Message sent successfully",
+      });
+      console.log(data);
+
+      // Generate AI response after a short delay
+      setTimeout(() => {
+        const { reply, needsEscalation } = data.data;
+
+        const assistantMessage: Message = {
+          id: crypto.randomUUID(),
+          type: "assistant",
+          content: reply,
+          timestamp: new Date(),
+          needsEscalation,
+        };
+
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        if (needsEscalation) {
+          setTimeout(() => {
+            const escalationMessage: Message = {
+              id: crypto.randomUUID(),
+              type: "assistant",
+              content: reply,
+              timestamp: new Date(),
+            };
+
+            const escalationFormMessage: Message = {
+              id: crypto.randomUUID(),
+              type: "escalation-form",
+              content: "",
+              timestamp: new Date(),
+            };
+
+            setMessages((prev) => [
+              ...prev,
+              escalationMessage,
+              escalationFormMessage,
+            ]);
+          }, 1000);
+        }
+      }, 1000);
+    },
+    onError: (error) => {
+      console.error("Create branch error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create branch",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleSendMessage = (message?: string) => {
     const messageText = message || inputValue.trim();
@@ -102,92 +280,91 @@ What would you like to know today?`,
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
-      type: 'user',
+      type: "user",
       content: messageText,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    sendMessageMutation.mutate({
+      sessionId,
+      content: messageText,
+    });
+
+    setMessages((prev) => [...prev, userMessage]);
+
     setInputValue("");
-
-    // Generate AI response after a short delay
-    setTimeout(() => {
-      const { content, needsEscalation } = generateResponse(messageText);
-      
-      const assistantMessage: Message = {
-        id: crypto.randomUUID(),
-        type: 'assistant',
-        content,
-        timestamp: new Date(),
-        needsEscalation
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-
-      if (needsEscalation) {
-        setTimeout(() => {
-          const escalationMessage: Message = {
-            id: crypto.randomUUID(),
-            type: 'assistant',
-            content: "I'm not fully confident about the answer to your question. Please leave your contact details, and a support agent will reach out shortly.",
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, escalationMessage]);
-          setShowEscalation(true);
-        }, 1000);
-      }
-    }, 1000);
   };
 
-  const handleEscalationSubmit = (formData: { name: string; email: string; message: string }) => {
-    // Store escalation in localStorage (in a real app, this would go to a backend)
-    const escalations = JSON.parse(localStorage.getItem('escalations') || '[]');
+  const handleEscalationSubmit = (formData: {
+    name: string;
+    email: string;
+    message: string;
+  }) => {
+    // Remove the escalation form from messages
+    setMessages((prev) => prev.filter((msg) => msg.type !== "escalation-form"));
+
+    // Store escalation (removed localStorage usage as per instructions)
+    const escalations = [];
     const newEscalation = {
       id: crypto.randomUUID(),
       ...formData,
       sessionId,
       timestamp: new Date().toISOString(),
-      status: 'Open',
-      chatHistory: messages
+      status: "Open",
+      chatHistory: messages,
     };
-    
     escalations.push(newEscalation);
-    localStorage.setItem('escalations', JSON.stringify(escalations));
-    
-    setShowEscalation(false);
-    
+
     const successMessage: Message = {
       id: crypto.randomUUID(),
-      type: 'assistant',
-      content: "Thank you! Your request has been sent. A support agent will reach out to you soon.",
-      timestamp: new Date()
+      type: "assistant",
+      content: `Thank you, ${formData.name}! Your request has been sent to our support team. We'll reach out to you at ${formData.email} shortly.`,
+      timestamp: new Date(),
     };
-    
-    setMessages(prev => [...prev, successMessage]);
-    
+
+    setMessages((prev) => [...prev, successMessage]);
+
     toast({
       title: "Request submitted",
       description: "A support agent will contact you shortly.",
     });
   };
 
+  const handleEscalationCancel = () => {
+    // Remove the escalation form from messages
+    setMessages((prev) => prev.filter((msg) => msg.type !== "escalation-form"));
+
+    const cancelMessage: Message = {
+      id: crypto.randomUUID(),
+      type: "assistant",
+      content: "No problem! Is there anything else I can help you with today?",
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, cancelMessage]);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      <div className="container mx-auto px-4 py-6">
-        <Card className="h-screen w-screen flex flex-col shadow-soft">
+      <div className="mx-auto px-4 py-6">
+        <Card className="h-[85vh] w-full flex flex-col shadow-soft">
           <CardHeader className="border-b">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <Button
+                className="left w-content border"
+                variant="ghost"
                 size="sm"
-                onClick={() => navigate('/')}
+                onClick={() => navigate("/")}
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div className="flex-1">
-                <CardTitle className="text-xl">Business Analysis School Support</CardTitle>
+                <CardTitle className="text-xl">
+                  Business Analysis School Support
+                </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Ask us anything about our programs, payments, or career opportunities.
+                  Ask us anything about our programs, payments, or career
+                  opportunities.
                 </p>
               </div>
               <Badge variant="outline">Session: {sessionId.slice(0, 8)}</Badge>
@@ -195,32 +372,45 @@ What would you like to know today?`,
           </CardHeader>
 
           <CardContent className="flex-1 flex flex-col p-0 min-h-0">
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 max-h-full">
+            <div
+              className="flex-1 overflow-y-auto p-6 space-y-4 max-h-full scroll-smooth"
+              id="chat-container"
+            >
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex gap-3 ${
+                    message.type === "user" ? "justify-end" : "justify-start"
+                  }`}
                 >
-                  {message.type === 'assistant' && (
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                  {(message.type === "assistant" ||
+                    message.type === "escalation-form") && (
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 self-start">
                       <Bot className="h-4 w-4 text-primary-foreground" />
                     </div>
                   )}
-                  
-                  <div
-                    className={`max-w-[80%] rounded-lg px-4 py-3 ${
-                      message.type === 'user'
-                        ? 'bg-gradient-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    <p className="whitespace-pre-line">{message.content}</p>
-                    <p className="text-xs opacity-70 mt-2">
-                      {message.timestamp.toLocaleTimeString()}
-                    </p>
-                  </div>
-                  
-                  {message.type === 'user' && (
+
+                  {message.type === "escalation-form" ? (
+                    <EscalationFormComponent
+                      onSubmit={handleEscalationSubmit}
+                      onCancel={handleEscalationCancel}
+                    />
+                  ) : (
+                    <div
+                      className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                        message.type === "user"
+                          ? "bg-gradient-primary text-primary-foreground"
+                          : "bg-muted"
+                      }`}
+                    >
+                      <p className="whitespace-pre-line">{message.content}</p>
+                      <p className="text-xs opacity-70 mt-2">
+                        {message.timestamp.toLocaleTimeString()}
+                      </p>
+                    </div>
+                  )}
+
+                  {message.type === "user" && (
                     <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
                       <User className="h-4 w-4 text-accent-foreground" />
                     </div>
@@ -230,22 +420,13 @@ What would you like to know today?`,
               <div ref={messagesEndRef} />
             </div>
 
-            {showEscalation && (
-              <div className="border-t p-6">
-                <EscalationForm 
-                  onSubmit={handleEscalationSubmit}
-                  onCancel={() => setShowEscalation(false)}
-                />
-              </div>
-            )}
-
             <div className="border-t p-6">
               <div className="flex gap-2">
                 <Input
                   placeholder="Type your message..."
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                   className="flex-1"
                 />
                 <Button onClick={() => handleSendMessage()}>
