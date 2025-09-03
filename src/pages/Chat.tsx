@@ -145,6 +145,7 @@ const Chat = () => {
 
   useEffect(() => {
     setSessionId(sessionId);
+    setMessages([]);
   }, [sessionId, setSessionId]);
 
   useEffect(() => {
@@ -353,24 +354,6 @@ const Chat = () => {
                     You can ask me anything related to business analysis school
                     programs, fees, or other program details.
                   </p>
-
-                  {/* Demo buttons */}
-                  <div className="mt-6 space-x-2">
-                    <button
-                      onClick={() =>
-                        handleSendMessage("Tell me about your programs")
-                      }
-                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >
-                      Demo Message
-                    </button>
-                    <button
-                      // onClick={triggerEscalation}
-                      className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
-                    >
-                      Demo Escalation
-                    </button>
-                  </div>
                 </div>
               )}
 
