@@ -229,6 +229,6 @@ For technical support or questions about this application, please contact the de
 
 ---
 
-**Built with ❤️ for Business Analysis School by Eny Consulting**
+**Built with ❤️ for Business Analysis School**
 
 ## JET
