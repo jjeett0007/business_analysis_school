@@ -109,6 +109,7 @@ const EscalationFormComponent = ({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, message: e.target.value }))
               }
+              required
               className="text-sm"
               disabled={disable}
             />
@@ -241,7 +242,7 @@ const Chat = () => {
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to create branch",
+        description: "Failed to send message",
         variant: "destructive",
       });
     },
@@ -280,7 +281,7 @@ const Chat = () => {
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to create branch",
+        description: "Failed",
         variant: "destructive",
       });
     },
