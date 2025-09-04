@@ -7,7 +7,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Send, ArrowLeft, Bot, User, Brain } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { chatService } from "@/lib/api/service";
+import { chatService, escalateService } from "@/lib/api/service";
 import { useWebSocket } from "@/context/socketContext";
 
 interface Message {
@@ -43,9 +43,11 @@ const TypingIndicator = () => {
 const EscalationFormComponent = ({
   onSubmit,
   onCancel,
+  disable,
 }: {
   onSubmit: (data: { name: string; email: string; message: string }) => void;
   onCancel: () => void;
+  disable: boolean;
 }) => {
   const [formData, setFormData] = useState({
     name: "",
@@ -82,6 +84,7 @@ const EscalationFormComponent = ({
               }
               required
               className="text-sm"
+              disabled={disable}
             />
           </div>
 
@@ -95,6 +98,7 @@ const EscalationFormComponent = ({
               }
               required
               className="text-sm"
+              disabled={disable}
             />
           </div>
 
@@ -106,6 +110,7 @@ const EscalationFormComponent = ({
                 setFormData((prev) => ({ ...prev, message: e.target.value }))
               }
               className="text-sm"
+              disabled={disable}
             />
           </div>
 
@@ -115,6 +120,7 @@ const EscalationFormComponent = ({
               type="submit"
               size="sm"
               className="text-xs"
+              disabled={disable}
             >
               Submit Request
             </Button>
@@ -140,12 +146,12 @@ const Chat = () => {
   const [sessionId] = useState(() => crypto.randomUUID());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { setSessionId, message } = useWebSocket();
+  const { setSessionId, message, resetMessage } = useWebSocket();
   const [isAssistantTyping, setIsAssistantTyping] = useState(false);
+  const [disableMessageButton, setDisableMessageButton] = useState(false);
 
   useEffect(() => {
     setSessionId(sessionId);
-    setMessages([]);
   }, [sessionId, setSessionId]);
 
   useEffect(() => {
@@ -187,6 +193,7 @@ const Chat = () => {
         ) {
           setTimeout(() => {
             setIsAssistantTyping(false);
+            setDisableMessageButton(true);
 
             const escalationMessage: Message = {
               id: crypto.randomUUID(),
@@ -261,39 +268,44 @@ const Chat = () => {
     setInputValue("");
   };
 
+  const escalationFormMutation = useMutation({
+    mutationFn: escalateService.sendEscalationForm,
+    onSuccess: (data) => {
+      console.log(message);
+      toast({
+        title: "Request submitted",
+        description: "A support agent will contact you shortly.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to create branch",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEscalationSubmit = (formData: {
     name: string;
     email: string;
     message: string;
   }) => {
-    // Remove the escalation form from messages
-    setMessages((prev) => prev.filter((msg) => msg.type !== "escalation-form"));
-
-    // Store escalation (removed localStorage usage as per instructions)
-    const escalations = [];
     const newEscalation = {
-      id: crypto.randomUUID(),
       ...formData,
       sessionId,
-      timestamp: new Date().toISOString(),
-      status: "Open",
-      chatHistory: messages,
-    };
-    escalations.push(newEscalation);
-
-    const successMessage: Message = {
-      id: crypto.randomUUID(),
-      type: "assistant",
-      content: `Thank you, ${formData.name}! Your request has been sent to our support team. We'll reach out to you at ${formData.email} shortly.`,
-      timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, successMessage]);
+    escalationFormMutation.mutate(newEscalation);
 
-    toast({
-      title: "Request submitted",
-      description: "A support agent will contact you shortly.",
-    });
+    const messagePayload = {
+      sessionId,
+      content: `my name is ${formData.name}, my email is ${formData.email}, and my message for the human representative is ${formData.message}`,
+    };
+
+    sendMessageMutation.mutate(messagePayload);
+
+    setDisableMessageButton(false);
   };
 
   const handleEscalationCancel = () => {
@@ -375,6 +387,7 @@ const Chat = () => {
                     <EscalationFormComponent
                       onSubmit={handleEscalationSubmit}
                       onCancel={handleEscalationCancel}
+                      disable={!disableMessageButton}
                     />
                   ) : (
                     <div
@@ -412,7 +425,10 @@ const Chat = () => {
                   onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                   className="flex-1"
                 />
-                <Button onClick={() => handleSendMessage()}>
+                <Button
+                  disabled={disableMessageButton}
+                  onClick={() => handleSendMessage()}
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>

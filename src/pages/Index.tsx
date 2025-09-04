@@ -26,14 +26,16 @@ import { useWebSocket } from "@/context/socketContext";
 const Index = () => {
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const { resetMessage } = useWebSocket();
+  const { resetMessage, message } = useWebSocket();
 
   useEffect(() => {
+    resetMessage();
+
     return () => {
       // when leaving this page, clear the last message
       resetMessage();
     };
-  }, [resetMessage]);
+  }, [message]);
 
   const faqTopics = [
     "See available programs",

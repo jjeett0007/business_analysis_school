@@ -46,7 +46,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     const socket = new WebSocket(`${protocol}://${socketLink}`);
 
     socket.onopen = () => {
-      console.log("WebSocket connected with session:", sessionId);
+      // console.log("WebSocket connected with session:", sessionId);
       // send session ID immediately
       const initMsg = { type: "session-id", sessionId };
       socket.send(JSON.stringify(initMsg));
@@ -55,7 +55,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
-      if (data.type === "session-ack") {
+      if (data.type === "session-ack" && data.sessionId !== "") {
         setWs(socket);
       }
 
@@ -65,21 +65,23 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     };
 
     socket.onclose = () => {
-      console.log("WebSocket closed");
+      // console.log("WebSocket closed");
     };
 
     setWs(socket);
 
     return () => {
       if (socket.readyState === WebSocket.OPEN) {
-        console.log("Cleanup: Closing WebSocket");
+        // console.log("Cleanup: Closing WebSocket");
         socket.close();
       }
       setWs(null);
     };
   }, [socketLink, sessionId]); // <-- triggers on new sessionId
 
-    const resetMessage = () => setMessage(null); 
+    const resetMessage = () => {
+      setMessage(null)
+    }; 
 
   return (
     <webSocketContext.Provider
