@@ -49,6 +49,10 @@ const Index = () => {
     { src: student2, alt: "Students collaborating on project" },
     { src: student3, alt: "Student presenting data visualization" },
     { src: student4, alt: "Graduates celebrating success" },
+    { src: student1, alt: "Business analysis student studying" },
+    { src: student2, alt: "Students collaborating on project" },
+    { src: student3, alt: "Student presenting data visualization" },
+    { src: student4, alt: "Graduates celebrating success" },
   ];
 
   // Auto-scroll images every 4 seconds

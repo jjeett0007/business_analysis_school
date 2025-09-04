@@ -21,208 +21,137 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, CheckCircle, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/context/socketContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { escalateService } from "@/lib/api/service";
+import { ApiResponse, escalationForms } from "@/lib/types";
 
+// ---------- Interfaces ----------
 interface Escalation {
-  id: string;
+  _id: string;
+  sessionId: string;
   name: string;
   email: string;
   message: string;
-  sessionId: string;
-  timestamp: string;
-  status: "Open" | "In Progress" | "Closed";
+  status: "open" | "in_progress" | "closed";
+  createdAt: string;
+  updatedAt: string;
   chatHistory?: any[];
 }
 
+interface EscalationResponse {
+  message: string;
+  data: {
+    results: Escalation[];
+    pagination: {
+      totalItems: number;
+      currentPage: number;
+      totalPages: number;
+      pageSize: number;
+    };
+  };
+}
+
+interface SessionMessage {
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+}
+
+// ---------- Component ----------
 const Admin = () => {
-  const [escalations, setEscalations] = useState<Escalation[]>([]);
-  const [selectedEscalation, setSelectedEscalation] =
-    useState<Escalation | null>(null);
+  const [selectedEscalation, setSelectedEscalation] = useState<Escalation | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { resetMessage } = useWebSocket();
+  const queryClient = useQueryClient();
 
+  // Fetch all escalations
+  const {
+    data: escalationData,
+    isLoading: escalationLoading,
+    error: escalationError,
+  } = useQuery<ApiResponse<escalationForms>>({
+    queryKey: ["escalations"],
+    queryFn: escalateService.getAllEscalation,
+    retry: 2,
+  });
+
+  const escalations = escalationData?.data?.results || [];
+
+  // Reset message on leaving page
   useEffect(() => {
     return () => {
-      // when leaving this page, clear the last message
       resetMessage();
     };
   }, [resetMessage]);
 
-  useEffect(() => {
-    loadEscalations();
-  }, []);
+  // Fetch escalation chat history by sessionId
+  const {
+    data: escalationBySessionId,
+    isLoading: escalationSessionLoading,
+    error: escalationSessionError,
+  } = useQuery({
+    queryKey: ["escalationBySessionId", selectedEscalation?.sessionId],
+    queryFn: () =>
+      selectedEscalation
+        ? escalateService.getEscaltionBySessionId(selectedEscalation.sessionId)
+        : Promise.resolve(null),
+    enabled: !!selectedEscalation,
+    retry: 2,
+  });
 
-  const generateSampleEscalations = (): Escalation[] => {
-    const sampleData: Escalation[] = [
-      {
-        id: "sample-1",
-        name: "Sarah Johnson",
-        email: "sarah.johnson@email.com",
-        message:
-          "Need more information about international student eligibility and visa requirements",
-        sessionId: "sess-abc123",
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-        status: "Open",
-        chatHistory: [
-          {
-            id: "1",
-            type: "assistant",
-            content:
-              "Hi there 👋, I'm your virtual support assistant. What would you like to know today?",
-            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-          },
-          {
-            id: "2",
-            type: "user",
-            content:
-              "I'm an international student. Can I apply for your business analysis program?",
-            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 60000),
-          },
-          {
-            id: "3",
-            type: "assistant",
-            content:
-              "I'd be happy to help with that! However, I want to make sure you get the most accurate information for your specific situation.",
-            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 120000),
-          },
-        ],
-      },
-      {
-        id: "sample-2",
-        name: "Michael Chen",
-        email: "michael.chen@company.com",
-        message: "Corporate training options for my team of 15 analysts",
-        sessionId: "sess-def456",
-        timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-        status: "In Progress",
-        chatHistory: [
-          {
-            id: "1",
-            type: "user",
-            content: "Do you offer corporate training for teams?",
-            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-          },
-          {
-            id: "2",
-            type: "assistant",
-            content:
-              "We do offer corporate programs! Let me get you connected with our enterprise team for custom pricing.",
-            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000 + 60000),
-          },
-        ],
-      },
-      {
-        id: "sample-3",
-        name: "Jennifer Rodriguez",
-        email: "jen.rodriguez@gmail.com",
-        message: "Schedule changed, need to defer my enrollment to next cohort",
-        sessionId: "sess-ghi789",
-        timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-        status: "Closed",
-        chatHistory: [
-          {
-            id: "1",
-            type: "user",
-            content: "I need to postpone my start date due to work commitments",
-            timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-          },
-          {
-            id: "2",
-            type: "assistant",
-            content:
-              "I understand. Let me connect you with our admissions team to discuss deferral options.",
-            timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 60000),
-          },
-        ],
-      },
-      {
-        id: "sample-4",
-        name: "David Park",
-        email: "david.park@tech.com",
-        message: "Payment plan modification needed due to budget changes",
-        sessionId: "sess-jkl012",
-        timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3 hours ago
-        status: "Open",
-        chatHistory: [
-          {
-            id: "1",
-            type: "user",
-            content: "Can I change my payment plan after enrollment?",
-            timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
-          },
-          {
-            id: "2",
-            type: "assistant",
-            content:
-              "Payment plan modifications are possible. I'll connect you with our billing team for assistance.",
-            timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000 + 60000),
-          },
-        ],
-      },
-      {
-        id: "sample-5",
-        name: "Lisa Thompson",
-        email: "lisa.thompson@consulting.com",
-        message:
-          "Career services support - looking for job placement assistance",
-        sessionId: "sess-mno345",
-        timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week ago
-        status: "Closed",
-        chatHistory: [
-          {
-            id: "1",
-            type: "user",
-            content:
-              "What kind of career support do you provide after graduation?",
-            timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-          },
-          {
-            id: "2",
-            type: "assistant",
-            content:
-              "We provide comprehensive career services including resume review, interview prep, and job placement assistance.",
-            timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 60000),
-          },
-        ],
-      },
-    ];
+  // Update escalation status
+  const updateEscalationStatus = async (
+    id: string,
+    status: "open" | "in_progress" | "closed"
+  ) => {
+    try {
+      // TODO: call API: await escalateService.updateEscalationStatus(id, status);
+      queryClient.invalidateQueries({ queryKey: ["escalations"] });
 
-    return sampleData;
-  };
+      toast({
+        title: "Status updated",
+        description: `Escalation marked as ${status.replace("_", " ")}`,
+      });
 
-  const loadEscalations = () => {
-    const stored = localStorage.getItem("escalations");
-    const storedEscalations = stored ? JSON.parse(stored) : [];
-    const sampleEscalations = generateSampleEscalations();
-
-    // Combine stored and sample escalations
-    const allEscalations = [...storedEscalations, ...sampleEscalations];
-    setEscalations(allEscalations);
-  };
-
-  const updateEscalationStatus = (id: string, status: Escalation["status"]) => {
-    const updated = escalations.map((escalation) =>
-      escalation.id === id ? { ...escalation, status } : escalation
-    );
-    setEscalations(updated);
-    localStorage.setItem("escalations", JSON.stringify(updated));
-
-    toast({
-      title: "Status updated",
-      description: `Escalation marked as ${status.toLowerCase()}`,
-    });
+      // If currently viewing this escalation, also update locally
+      if (selectedEscalation && selectedEscalation._id === id) {
+        setSelectedEscalation((prev) =>
+          prev ? { ...prev, status } : prev
+        );
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update escalation status",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Open":
+    switch (status.toLowerCase()) {
+      case "open":
         return "destructive";
-      case "In Progress":
+      case "in_progress":
         return "default";
-      case "Closed":
+      case "closed":
         return "secondary";
       default:
         return "default";
+    }
+  };
+
+  const getStatusDisplay = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "open":
+        return "Open";
+      case "in_progress":
+        return "In Progress";
+      case "closed":
+        return "Closed";
+      default:
+        return status;
     }
   };
 
@@ -230,6 +159,36 @@ const Admin = () => {
     return new Date(timestamp).toLocaleString();
   };
 
+  // ---------- Loading / Error states ----------
+  if (escalationLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading escalations...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (escalationError) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">Error loading escalations</p>
+          <Button
+            onClick={() =>
+              queryClient.invalidateQueries({ queryKey: ["escalations"] })
+            }
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- UI ----------
   return (
     <div className="min-h-screen bg-gradient-subtle">
       <div className="container mx-auto px-4 py-6">
@@ -248,7 +207,10 @@ const Admin = () => {
                 </p>
               </div>
               <Badge variant="outline">
-                {escalations.filter((e) => e.status === "Open").length} Open
+                {escalations.filter((e) => e.status === "open").length} Open
+              </Badge>
+              <Badge variant="secondary">
+                Total: {escalationData?.data?.pagination?.totalItems || 0}
               </Badge>
             </div>
           </CardHeader>
@@ -257,9 +219,7 @@ const Admin = () => {
             {escalations.length === 0 ? (
               <div className="text-center py-12">
                 <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  No escalations yet
-                </h3>
+                <h3 className="text-lg font-semibold mb-2">No escalations yet</h3>
                 <p className="text-muted-foreground">
                   Support requests will appear here when users need human
                   assistance.
@@ -273,30 +233,30 @@ const Admin = () => {
                     <TableHead>Email</TableHead>
                     <TableHead>Message</TableHead>
                     <TableHead>Session ID</TableHead>
-                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Created At</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {escalations.map((escalation) => (
-                    <TableRow key={escalation.id}>
-                      <TableCell className="font-medium">
-                        {escalation.name}
-                      </TableCell>
+                    <TableRow key={escalation._id}>
+                      <TableCell className="font-medium">{escalation.name}</TableCell>
                       <TableCell>{escalation.email}</TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {escalation.message || "No additional details"}
+                      <TableCell className="max-w-xs">
+                        <div className="truncate" title={escalation.message}>
+                          {escalation.message || "No additional details"}
+                        </div>
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         {escalation.sessionId.slice(0, 8)}...
                       </TableCell>
                       <TableCell className="text-sm">
-                        {formatDate(escalation.timestamp)}
+                        {formatDate(escalation.createdAt)}
                       </TableCell>
                       <TableCell>
                         <Badge variant={getStatusColor(escalation.status)}>
-                          {escalation.status}
+                          {getStatusDisplay(escalation.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -306,9 +266,7 @@ const Admin = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() =>
-                                  setSelectedEscalation(escalation)
-                                }
+                                onClick={() => setSelectedEscalation(escalation)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -321,99 +279,124 @@ const Admin = () => {
                                 <div className="space-y-6">
                                   <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                      <h4 className="font-semibold">
-                                        Contact Information
-                                      </h4>
+                                      <h4 className="font-semibold">Contact Information</h4>
                                       <p>
-                                        <strong>Name:</strong>{" "}
-                                        {selectedEscalation.name}
+                                        <strong>Name:</strong> {selectedEscalation.name}
                                       </p>
                                       <p>
-                                        <strong>Email:</strong>{" "}
-                                        {selectedEscalation.email}
+                                        <strong>Email:</strong> {selectedEscalation.email}
                                       </p>
                                       <p>
-                                        <strong>Date:</strong>{" "}
-                                        {formatDate(
-                                          selectedEscalation.timestamp
-                                        )}
+                                        <strong>Created:</strong>{" "}
+                                        {formatDate(selectedEscalation.createdAt)}
+                                      </p>
+                                      <p>
+                                        <strong>Updated:</strong>{" "}
+                                        {formatDate(selectedEscalation.updatedAt)}
                                       </p>
                                     </div>
                                     <div>
-                                      <h4 className="font-semibold">
-                                        Session Details
-                                      </h4>
+                                      <h4 className="font-semibold">Session Details</h4>
                                       <p>
                                         <strong>Session ID:</strong>{" "}
                                         {selectedEscalation.sessionId}
                                       </p>
                                       <p>
                                         <strong>Status:</strong>{" "}
-                                        {selectedEscalation.status}
+                                        {getStatusDisplay(selectedEscalation.status)}
+                                      </p>
+                                      <p>
+                                        <strong>ID:</strong> {selectedEscalation._id}
                                       </p>
                                     </div>
                                   </div>
 
-                                  {selectedEscalation.message && (
+                                  <div>
+                                    <h4 className="font-semibold">Message</h4>
+                                    <p className="bg-muted p-3 rounded-md">
+                                      {selectedEscalation.message}
+                                    </p>
+                                  </div>
+
+                                  {escalationBySessionId?.data?.session?.messages?.length > 0 && (
                                     <div>
-                                      <h4 className="font-semibold">
-                                        Additional Message
-                                      </h4>
-                                      <p className="bg-muted p-3 rounded-md">
-                                        {selectedEscalation.message}
-                                      </p>
+                                      <h4 className="font-semibold">Chat History</h4>
+                                      {escalationSessionLoading ? (
+                                        <div className="bg-muted p-4 rounded-md flex items-center justify-center">
+                                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
+                                          Loading chat history...
+                                        </div>
+                                      ) : (
+                                        <div className="bg-muted p-4 rounded-md max-h-96 overflow-y-auto space-y-3">
+                                          {escalationBySessionId.data.session.messages.map(
+                                            (msg: SessionMessage, index: number) => (
+                                              <div
+                                                key={index}
+                                                className={`flex gap-2 ${
+                                                  msg.role === "user"
+                                                    ? "justify-end"
+                                                    : "justify-start"
+                                                }`}
+                                              >
+                                                <div
+                                                  className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                                                    msg.role === "user"
+                                                      ? "bg-primary text-primary-foreground"
+                                                      : "bg-background"
+                                                  }`}
+                                                >
+                                                  <p className="whitespace-pre-line">{msg.content}</p>
+                                                  <p className="text-xs opacity-70 mt-1">
+                                                    {new Date(
+                                                      msg.createdAt
+                                                    ).toLocaleTimeString()}
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            )
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   )}
 
-                                  {selectedEscalation.chatHistory && (
-                                    <div>
-                                      <h4 className="font-semibold">
-                                        Chat History
-                                      </h4>
-                                      <div className="bg-muted p-4 rounded-md max-h-96 overflow-y-auto space-y-3">
-                                        {selectedEscalation.chatHistory.map(
-                                          (msg: any, index: number) => (
-                                            <div
-                                              key={index}
-                                              className={`flex gap-2 ${
-                                                msg.type === "user"
-                                                  ? "justify-end"
-                                                  : "justify-start"
-                                              }`}
-                                            >
-                                              <div
-                                                className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                                                  msg.type === "user"
-                                                    ? "bg-primary text-primary-foreground"
-                                                    : "bg-background"
-                                                }`}
-                                              >
-                                                <p className="whitespace-pre-line">
-                                                  {msg.content}
-                                                </p>
-                                                <p className="text-xs opacity-70 mt-1">
-                                                  {new Date(
-                                                    msg.timestamp
-                                                  ).toLocaleTimeString()}
-                                                </p>
-                                              </div>
-                                            </div>
-                                          )
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
+                                  <div className="flex gap-2">
+                                    <Button
+                                      variant="outline"
+                                      onClick={() =>
+                                        updateEscalationStatus(
+                                          selectedEscalation._id,
+                                          "in_progress"
+                                        )
+                                      }
+                                      disabled={selectedEscalation.status === "in_progress"}
+                                    >
+                                      Mark as In Progress
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      onClick={() =>
+                                        updateEscalationStatus(
+                                          selectedEscalation._id,
+                                          "closed"
+                                        )
+                                      }
+                                      disabled={selectedEscalation.status === "closed"}
+                                    >
+                                      Mark as Closed
+                                    </Button>
+                                  </div>
                                 </div>
                               )}
                             </DialogContent>
                           </Dialog>
 
-                          {escalation.status !== "Closed" && (
+                          {escalation.status !== "closed" && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() =>
-                                updateEscalationStatus(escalation.id, "Closed")
+                                updateEscalationStatus(escalation._id, "closed")
                               }
                             >
                               <CheckCircle className="h-4 w-4" />
