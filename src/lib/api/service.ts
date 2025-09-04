@@ -1,4 +1,4 @@
-import { ApiResponse, messagePayload } from "../types";
+import { ApiResponse, EscalationPayload, messagePayload } from "../types";
 import { apiClient } from "./apiClient";
 
 export const chatService = {
@@ -11,3 +11,15 @@ export const chatService = {
     }
   },
 };
+
+
+export const escalateService = {
+  sendEscalationForm: async (formData: EscalationPayload): Promise<any> => {
+    try {
+      const response = await apiClient.post<ApiResponse>("/escalation", formData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+}

@@ -21,10 +21,19 @@ import student1 from "@/assets/student-1.jpg";
 import student2 from "@/assets/student-2.jpg";
 import student3 from "@/assets/student-3.jpg";
 import student4 from "@/assets/student-4.jpg";
+import { useWebSocket } from "@/context/socketContext";
 
 const Index = () => {
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const { resetMessage } = useWebSocket();
+
+  useEffect(() => {
+    return () => {
+      // when leaving this page, clear the last message
+      resetMessage();
+    };
+  }, [resetMessage]);
 
   const faqTopics = [
     "See available programs",

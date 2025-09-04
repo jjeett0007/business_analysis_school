@@ -15,8 +15,9 @@ interface Message {
 interface WebSocketContextType {
   ws: WebSocket | null;
   message: Message | null;
-  setMessage: (message: Message) => void;
-  setSessionId: (sessionId: string) => void; // you can still expose this setter
+  setMessage: (message: Message | null) => void;   // <-- allow null
+  setSessionId: (sessionId: string) => void;
+  resetMessage: () => void;                        // <-- new
 }
 
 const webSocketContext = createContext<WebSocketContextType>({
@@ -24,7 +25,9 @@ const webSocketContext = createContext<WebSocketContextType>({
   message: null,
   setMessage: () => {},
   setSessionId: () => {},
+  resetMessage: () => {},
 });
+
 
 export const useWebSocket = () => useContext(webSocketContext);
 
@@ -37,6 +40,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!sessionId) return; // don’t connect if sessionId not set yet
+    setMessage(null);
 
     const protocol = window.location.protocol === "https:" ? "wss" : "wss";
     const socket = new WebSocket(`${protocol}://${socketLink}`);
@@ -50,25 +54,12 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      //   console.log("WebSocket message received:", data);
 
       if (data.type === "session-ack") {
         setWs(socket);
       }
 
-      if (data.isTyping) {
-        setMessage(data);
-      }
-
-      if (data.isTyping === false) {
-        setMessage(data);
-      }
-
-      if (data.reply !== "") {
-        setMessage(data);
-      }
-
-      if (data.type === "message") {
+      if (data.isTyping || data.isTyping === false || data.reply !== "") {
         setMessage(data);
       }
     };
@@ -88,9 +79,11 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [socketLink, sessionId]); // <-- triggers on new sessionId
 
+    const resetMessage = () => setMessage(null); 
+
   return (
     <webSocketContext.Provider
-      value={{ ws, message, setMessage, setSessionId }}
+      value={{ ws, message, setMessage, setSessionId, resetMessage }}
     >
       {children}
     </webSocketContext.Provider>
